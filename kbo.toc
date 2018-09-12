@@ -1,0 +1,11 @@
+## Interface: 80000
+## Title: kbo Customizations
+## Notes: Personal customizations for Ka'bor'i
+## Author: Ka'bor'i
+## Version: 1.0
+## X-License: MIT License
+## SavedVariables: kbo.Data
+
+KboData.lua
+KboPlayer.lua
+kbo.lua
