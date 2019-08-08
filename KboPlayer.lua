@@ -13,7 +13,7 @@ function KboPlayer:New(playername)
 	self.name = playername or "Unknown";
 	self.rank = "Unknown";
 	self.lastlogin = 0;
-	self.wordcount = 0;
+	self.achievements = 0;
 	return self;
 end
 
@@ -75,16 +75,6 @@ end
 
 
 -----------------
--- Wordcount Functionality
------------------
-
--- Add a number to this players wordcount
-function KboPlayer:AddWordcount(number)
-	self.wordcount = self.wordcount + number;
-end
-
-
------------------
 -- Other Get/Set functions
 -----------------
 
@@ -92,8 +82,14 @@ end
 function KboPlayer:SetRank(rank)
 	self.rank = rank;
 end
+function KboPlayer:SetAchievements(points)
+	if points > self.achievements then self.achievements = points; end
+end
 
 -- Return Functions
+function KboPlayer:GetAchievements()
+	return self.achievements;
+end
 function KboPlayer:GetLastLogin()
 	return self.lastlogin;
 end
@@ -105,7 +101,4 @@ function KboPlayer:GetRank()
 end
 function KboPlayer:GetNumTwinks()
 	return table.getn(self.characters);
-end
-function KboPlayer:GetWordcount()
-	return self.wordcount;
 end

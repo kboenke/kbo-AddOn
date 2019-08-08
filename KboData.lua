@@ -5,29 +5,37 @@ KboData = {};
 KboData.__index = KboData;
 
 -- Constructor
-function KboData:New()
+function KboData:New(kboDatabase)
 	self = {
 		RESTORED	= false,
 		VERSION		= 2,
-		lastonline	= time() - (24*60*60),
+		lastonline	= kboData_Lastlogin or (time() - (27*60*60)), -- let's just assume yesterday as a default
 	};
 	setmetatable(self, KboData);
 	self.db = {};
 	self.db.__index = KboPlayer;
+	-- Restore previous data
+	if kboDatabase ~= nil then
+		self.RESTORED	= true;
+	end
 	return self;
 end
 
 -- Reset player-data
 function KboData:Initialize(force)
-	if force == true then
-		wipe(self.db);
-	end
-	self.lastonline = time();
+	if force == true then wipe(self.db); end
+	self:UpdateLogin();
 end
+
 
 -----------------
 -- Login functions
 -----------------
+
+-- Check if this is the first time logging in today
+function KboData:IsFirstLoginToday()
+	return kbo:IsToday(self.lastonline);
+end
 
 -- Store first time (daily) we have been online
 function KboData:UpdateLogin()
@@ -45,18 +53,19 @@ end
 function KboData:UpdateRoster()
 	for i = 1, GetNumGuildMembers() do
 		-- Extract information for all guild-members and build guild-tables
-		local charactername, rank, _, _, _, _, note, _, isOnline, _, _, _, _, _, _, _ = GetGuildRosterInfo(i);
+		local charactername, rank, _, _, _, _, note, _, isOnline, _, _, achievements, _, _, _, _ = GetGuildRosterInfo(i);
 		local playername = (note ~= "") and note or charactername; -- in case no note is given, use charactername
 		-- Store character
 		local _playername = kbo:SanitizeName(playername);
-		if self:HasPlayer(playername) == false then
-			self.db[_playername] = KboPlayer:New(playername);
-		end
+		if self:HasPlayer(playername) == false then self.db[_playername] = KboPlayer:New(playername); end
 		self.db[_playername]:SetRank(rank);
+		self.db[_playername]:SetAchievements(achievements);
 		self.db[_playername]:AddCharacter(charactername);
 		-- Store last login-time
-		local _charlogoff = isOnline and time() or 0;
-		if isOnline == false then
+		local _charlogoff = 0;
+		if isOnline then
+			_charlogoff = time();
+		else
 			local years, months, days, hours = GetGuildRosterLastOnline(i);
 			--Sanitize and convert to timestamp
 			years, months, days, hours = years or 0, months or 0, days or 0, hours or 0;
@@ -66,41 +75,31 @@ function KboData:UpdateRoster()
 		end
 		self.db[_playername]:UpdatePlayerLogin(_charlogoff);
 	end
---	kbo:PrintDebug("Loaded " .. self:GetNumPlayers() .. " players from guild-roster.");
 end
 
--- Increase Wordcount for a player
-function KboData:AddPlayerWordcount(playername, numwords)
-	if playername == nil then return false; end
-	if self:HasPlayer(playername) == false then return false; end
-	local _playername = kbo:SanitizeName(playername);
-	self.db[_playername]:AddWordcount(numwords);
-end
-
--- Create Player/Wordcount table
-function KboData:GetWordcountTable()
-	local wordcount = {};
+-- Create Achievement table
+function KboData:GetAchievementTable()
+	local achievementTable = {};
 	local _players = self:GetPlayernames();
 	for _, _playername in pairs(_players) do
 		local _stats = kbo.Data:GetPlayerData(_playername);
-		if _stats ~= false then 
-			table.insert(wordcount, {
+		if _stats ~= false then
+			table.insert(achievementTable, {
 				playername = _stats["playername"],
 				rankcolor = _stats["rankcolor"],
-				wordcount = _stats["wordcount"],
+				achievements = _stats["achievements"],
 			});
 		end
 	end
-	return wordcount;
+	return achievementTable;
 end
-
 -- Create Player/TwinkCount table
 function KboData:GetTwinkcountTable()
 	local twinkcount = {};
 	local _players = self:GetPlayernames();
 	for _, _playername in pairs(_players) do
 		local _stats = kbo.Data:GetPlayerData(_playername);
-		if _stats ~= false then 
+		if _stats ~= false then
 			table.insert(twinkcount, {
 				playername = _stats["playername"],
 				rankcolor = _stats["rankcolor"],
@@ -152,12 +151,12 @@ function KboData:GetPlayerData(playername)
 	if self:HasPlayer(playername) == false then return false; end
 	local _playername = kbo:SanitizeName(playername);
 	return {
-		playername		= self.db[_playername]:GetPlayername(),
+		playername	= self.db[_playername]:GetPlayername(),
 		lastonline	= self.db[_playername]:GetLastLogin(),
 		rank		= self.db[_playername]:GetRank(),
 		rankcolor	= self.db[_playername]:GetRankColor(),
 		twinkcount	= self.db[_playername]:GetNumTwinks(),
-		wordcount	= self.db[_playername]:GetWordcount(),
+		achievements= self.db[_playername]:GetAchievements(),
 	}
 end
 
@@ -169,4 +168,7 @@ end
 -- Return function
 function KboData:GetLogin()
 	return self.lastonline;
+end
+function KboData:GetDB()
+	return self.db;
 end
