@@ -1,22 +1,25 @@
 -----------------
 -- General Stuff
 -----------------
-kbo = {};
-kbo.Frame = CreateFrame("Frame");
-kbo.DEBUG = true;
-kbo.REALMSUFFIX = "-".. GetRealmName();
+kbo = {
+	FRAME = CreateFrame("Frame"),
+	VERSION = "2.5.3",
+	REALMSUFFIX = "-".. GetRealmName(),
+	focuscolor = "|cffffff00",
+}
 
 -- Saved Variables
 kboData_Lastlogin = nil;
+kboData_Settings = {};
 
 -- Standard-output
 function kbo:PrintMessage(message)
-	DEFAULT_CHAT_FRAME:AddMessage("|cffffffe0kbo:|r " .. message);
+	DEFAULT_CHAT_FRAME:AddMessage("|cffffffe0kbo:|r ".. message);
 end
 
 -- Debug-output
 function kbo:PrintDebug(message)
-	if kbo.DEBUG then kbo:PrintMessage("|cffFFC125" .. message .."|r"); end
+	if kbo.Data:IsDebug() then kbo:PrintMessage("|cffFFC125".. message .."|r"); end
 end
 
 -- Helper functions
@@ -55,15 +58,12 @@ kbo.Data = {};
 
 -- Event function for Player-Login
 function kbo.Data:OnLogin()
-	if kboData_Lastlogin == nil then
-		kbo.Data:Initialize();
-		kbo:PrintDebug("No stored data available, initializing.")
-	else
-		kbo.Data = KboData:New();
-		kbo:PrintDebug("Last login reported as " .. date("%A (%R)", kbo.Data:GetLogin() + (3 *60 *60))); -- Adjusting for offset
-	end
+	if kboData_Lastlogin == nil then kbo.Data:Initialize(); else kbo.Data = KboData:New(); end
 	kbo.Data:UpdateLogin();
-	kbo.Data:UpdateRoster();
+	kboConfig:Initialize();
+	-- Announce settings
+	kbo:PrintMessage("Version ".. kbo.VERSION);
+	kbo:PrintDebug("Debug-Messages are ".. kbo.focuscolor .."ON|r!");
 end
 
 
@@ -79,16 +79,20 @@ function kbo.Events:ADDON_LOADED(addon)
 	end
 end
 function kbo.Events:PLAYER_LOGIN(...)
-	kbo.Greet:OnLogin();
+	C_Timer.After(10, function()
+		kbo.Data:UpdateRoster();
+		kbo.Greet:OnLogin();
+		kbo.Gruppe6:OnLogin();
+	end);
 end
 function kbo.Events:PLAYER_ENTERING_WORLD(...)
-	kbo.Gruppe6:OnLogin();
 end
 function kbo.Events:PLAYER_LEAVING_WORLD(...)
 	kboData_Lastlogin = kbo.Data:GetLogin();
+	kboData_Settings = kbo.Data:GetSettings();
 end
 function kbo.Events:PLAYER_LOGOUT(...)
-	kbo.Frame:UnregisterAllEvents();
+	kbo.FRAME:UnregisterAllEvents();
 end
 function kbo.Events:ACHIEVEMENT_EARNED(achievementID)
 	kbo.Slash:AchievementsRemaining();
@@ -110,9 +114,9 @@ function kbo.Events:PLAYER_DEAD(...)
 end
 
 -- Hook event-handlers
-kbo.Frame:SetScript("OnEvent", function(self, event, ...) kbo.Events[event](self, ...); end)
-kbo.Frame:UnregisterAllEvents();
-for eventhandler in pairs(kbo.Events) do kbo.Frame:RegisterEvent(eventhandler); end
+kbo.FRAME:SetScript("OnEvent", function(self, event, ...) kbo.Events[event](self, ...); end)
+kbo.FRAME:UnregisterAllEvents();
+for eventhandler in pairs(kbo.Events) do kbo.FRAME:RegisterEvent(eventhandler); end
 
 
 -----------------
@@ -127,14 +131,18 @@ local function SlashHandler(msg, editBox)
 	-- Extract information
 	local _msg, args = msg:match("^(%S*)%s*(.-)$");
 	_msg = string.lower(_msg);
-	local focuscolor = "|cffffff00";
 	-- Standard actions
-	if _msg == "achievements" or _msg == "astats" then
+	if _msg == "achievements" then
 		kbo.Slash:AchievementLeaderboard();
+	elseif _msg == "astats" then
+		kbo.Slash:AchievementsRemaining();
 	elseif _msg == "equip" then
 		kbo.Slash:EquipmentCheck();
 	elseif _msg == "quests" then
 		kbo.Slash:QuestQueue();
+	elseif _msg == "qstatus" then
+		local _questid = (args ~= "") and args or "1337";
+		kbo.Slash:QuestStatus(_questid);
 	elseif _msg == "stats" then
 		kbo.Slash:MyStats();
 	elseif _msg == "todo" then
@@ -145,42 +153,41 @@ local function SlashHandler(msg, editBox)
 		local _charactername = (args ~= "") and args or "Kabori";
 		kbo.Slash:WhoIs(_charactername);
 	elseif _msg == "help" or _msg == "?" then
-		kbo:PrintMessage(focuscolor .. "achievements|r print guild achievement rankings");
-		kbo:PrintMessage(focuscolor .. "astats|r show achievment-progress");
-		kbo:PrintMessage(focuscolor .. "babble|r list most chattiest players");
-		kbo:PrintMessage(focuscolor .. "equip|r analyse equiped items");
-		kbo:PrintMessage(focuscolor .. "quests|r status of quest-queue");
-		kbo:PrintMessage(focuscolor .. "stats|r list most important player-statistics");
-		kbo:PrintMessage(focuscolor .. "twinks|r twink-leaderboard");
-		kbo:PrintMessage(focuscolor .. "whois <name>|r show who the player behind that character is");
+		kbo:PrintMessage(kbo.focuscolor .."achievements|r print achievement ranking for guild.");
+		kbo:PrintMessage(kbo.focuscolor .."astats|r show achievment-progress.");
+		kbo:PrintMessage(kbo.focuscolor .."equip|r analyse equiped items.");
+		kbo:PrintMessage(kbo.focuscolor .."quests|r status of quest-queue.");
+		kbo:PrintMessage(kbo.focuscolor .."qstatus <id>|r returns wether or not this quest has been done.")
+		kbo:PrintMessage(kbo.focuscolor .."stats|r list most important player-statistics.");
+		kbo:PrintMessage(kbo.focuscolor .."twinks|r twink-leaderboard.");
+		kbo:PrintMessage(kbo.focuscolor .."whois <name>|r show who the player behind that character is.");
+	elseif _msg == "config" then
+		InterfaceOptionsFrame_OpenToCategory(kboConfig.Panel or "kbo");
 	-- Debug actions
 	elseif _msg == "resetlastonline" then
-		if kbo.DEBUG then kbo.Data:UpdatLogin(); end
+		if kbo.Data:IsDebug() then kbo.Data:UpdatLogin(); end
 	elseif _msg == "resetguild" then
-		if kbo.DEBUG then
+		if kbo.Data:IsDebug() then
 			kbo.Data:Initialize();
 			kbo:PrintMessage("Player-Data has been reset");
 			kbo.Data:UpdateRoster();
 		end
 	elseif _msg == "update" then
 		kbo.Data:UpdateRoster();
-	elseif _msg == "testwelcome" then
-		local _playername = (args ~= "") and args or "Kabori";
-		if kbo.DEBUG then kbo.Greet:WelcomeMessage(_playername); end
 	elseif _msg == "showdata" then
 		local _playername = (args ~= "") and args or false;
 		if not _playername then
-			_restored = kbo.Data.RESTORED and "true" or "false";
-			kbo:PrintMessage(focuscolor .. "lastonline|r ".. kbo.Data.lastonline);
-			kbo:PrintMessage(focuscolor .. "restored|r ".. _restored);
-			kbo:PrintMessage(focuscolor .. "version|r ".. kbo.Data.VERSION);
+			_restored = (kbo.Data.RESTORED) and "true" or "false";
+			kbo:PrintMessage(kbo.focuscolor .."lastonline|r ".. kbo.Data.lastonline);
+			kbo:PrintMessage(kbo.focuscolor .."restored|r ".. _restored);
+			kbo:PrintMessage(kbo.focuscolor .."version|r ".. kbo.Data.VERSION);
 		else
 			local playerdata = kbo.Data:GetPlayerData(_playername)
 			if playerdata ~= false then
 				kbo:PrintMessage("Data for player " .. _playername);
 				for key, val in pairs(playerdata) do
-					if key ~= "characters" then kbo:PrintMessage(focuscolor .. key .." |r ".. val);
-					else for _, _character in pairs(val) do kbo:PrintMessage(focuscolor .."Character|r ".. _character); end
+					if key ~= "characters" then kbo:PrintMessage(kbo.focuscolor .. key .." |r ".. val);
+					else for _, _character in pairs(val) do kbo:PrintMessage(kbo.focuscolor .."Character|r ".. _character); end
 					end
 				end
 			else kbo:PrintMessage("No such player, ".. _playername .."."); end
@@ -195,25 +202,44 @@ SlashCmdList["kbo"] = SlashHandler
 
 -- How much do I still have to do?
 function kbo.Slash:AchievementsRemaining()
-	local focuscolor = "|cffffff00";
+	-- Update Guild-Roster
+	kbo.Data:UpdateRoster();
+	if kbo.Data:GetPlayerForCharacter(UnitName("player")) == false then
+		kbo:PrintDebug("Guild-Roster not initialized."); return;
+	end
 	-- Calculate achievements
 	local total, completed = GetNumCompletedAchievements();
-	local points = GetTotalAchievementPoints();
+	local points = GetTotalAchievementPoints(); -- This will be different from data on Guild-Roster!
 	local _missing, _relation = total - completed, (completed / total) * 100;
 	local _percentage = kbo:RoundNumber(_relation);
 	-- Get guild-ranking
-	local leaderboard, _me, _rank, _nextrank = kbo.Guild:GetAchievementLeaderboard(), kbo.Data:GetPlayerForCharacter(UnitName("player")), 0, 0;
-	for i = 1, #leaderboard, 1 do if leaderboard[i]["playername"] == _me then _rank = i; end end
-	if (_rank > 1) then _nextrank = leaderboard[_rank-1]["achievements"]; end
+	local leaderboard, myPlayer, myRank, nextPoints = kbo.Guild:GetAchievementLeaderboard(), kbo.Data:GetPlayerForCharacter(UnitName("player")), 0, 0;
+	for i = 1, #leaderboard, 1 do if leaderboard[i]["playername"] == myPlayer then myRank = i; end end
+	local myPoints = leaderboard[myRank]["achievements"]; -- Using data from Guild-Roster for comparison
+	if (myRank > 1) then nextPoints = leaderboard[myRank-1]["achievements"]; end
 	-- Output
-	_output = "%s achievements remaining (%s %% done). Now at ".. focuscolor .."guild-rank #%s|r, %s to next rank.";
-	kbo:PrintMessage(string.format(_output, _missing, _percentage, _rank, (_nextrank-points)));
+	_output = "%s achievements remaining (%s %% done). Now at ".. kbo.focuscolor .."guild-rank #%s|r, %s points to next rank.";
+	kbo:PrintMessage(string.format(_output, _missing, _percentage, myRank, (nextPoints-myPoints)));
 end
 
 -- Tell me how many quests I can still accept
 function kbo.Slash:QuestQueue()
-	local _numEntries, _numQuests = GetNumQuestLogEntries();
-	kbo:PrintMessage(_numQuests .. " quests active, " .. 25-_numQuests .. " slots free.");
+	local numEntries, numQuests = GetNumQuestLogEntries();
+	kbo:PrintMessage(numQuests .." quests active, ".. kbo.focuscolor .. (25-numQuests) .."|r slots free.");
+end
+
+--return information on a given quest
+function kbo.Slash:QuestStatus(questID)
+	local completed = GetQuestsCompleted();
+	local questlink = GetQuestLink(questID);
+	if info == nil and IsQuestTask(questID) == false then kbo:PrintMessage("No such quest."); return; end
+	if kbo:ContainsKey(completed, questID) then
+		kbo:PrintMessage(questlink .." has already been completed.");
+	elseif IsUnitOnQuest(questID, "player") then
+		kbo:PrintMessage(questlink .." is currently in process.");
+	else
+		kbo:PrintMessage(questlink .." is out there somewhere waiting for you.")
+	end
 end
 
 -- Check and list equipment
@@ -276,44 +302,48 @@ function kbo.Slash:EquipmentCheck()
 		if item["iLvl"] > _avg then _trend = "▲"
 		elseif item["iLvl"] < _avg then _trend = "▼" end
 		-- Print all items
-		kbo:PrintMessage(_trend .. item["iLvl"] .. "  " .. item["link"] .. " |cFFFF5555" .. item["remark"] .. "|r");
+		kbo:PrintMessage(_trend .. item["iLvl"] .."  ".. item["link"] .." |cFFFF5555".. item["remark"] .."|r");
 	end
 end
 
 -- Stat-Analysis
 function kbo.Slash:MyStats()
-	local focuscolor, colorGood, colorTarget, colorBad = "|cffffff00", "|cff00ff00", "|cffFF4500", "|cffff0000";
-	local _manaRegenBase, _manaRegenCast = GetManaRegen();
+	local colorGood, colorTarget, colorBad = "|cff00ff00", "|cffFF4500", "|cffff0000";
 	local _critColor, _hasteColor = colorBad, colorBad;
+	-- Calculate Stats
+	local manaRegenBase, manaRegenCast = GetManaRegen();
+	local _versatility = GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE) + GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE);
 	-- Evaluate Crit-Ratings
-	local _crit = GetSpellCritChance(2); -- Holy only
-	if _crit > 30 then _critColor = colorGood;
-	elseif _crit > 40 then _critColor = colorTarget;
-	elseif _crit > 43 then _critColor = colorBad; end
+	local crit = GetSpellCritChance(2); -- Holy only
+	local critMin, critTar, critMax = kbo.Data:GetStatsCrit();
+	if crit > critMin then _critColor = colorGood;
+	elseif crit > critTar then _critColor = colorTarget;
+	elseif crit > critMax then _critColor = colorBad; end
 	-- Evaluate Haste-Ratings
-	local _haste = GetHaste();
-	if _haste > 10 then _hasteColor = colorGood;
-	elseif _haste > 15 then _hasteColor = colorTarget;
-	elseif _haste > 20 then _hasteColor = colorOver; end
+	local haste = GetHaste();
+	local hasteMin, hasteTar, hasteMax = kbo.Data:GetStatsHaste();
+	if haste > hasteMin then _hasteColor = colorGood;
+	elseif haste > hasteTar then _hasteColor = colorTarget;
+	elseif haste > hasteMax then _hasteColor = colorOver; end
 	-- Output
-	kbo:PrintMessage(focuscolor .."1. Intellect|r ".. UnitStat("player", 4));
-	kbo:PrintMessage(focuscolor .."2. Spell-Crit|r ".. _critColor .. kbo:RoundNumber(_crit) .."%|r");
-	kbo:PrintMessage(focuscolor .."3. Haste|r ".. _hasteColor .. kbo:RoundNumber(_haste) .."%|r");
-	kbo:PrintMessage(focuscolor .."4. Versatility|r ".. kbo:RoundNumber(GetCombatRatingBonus(CR_VERSATILITY_DAMAGE_DONE) + GetVersatilityBonus(CR_VERSATILITY_DAMAGE_DONE)) .."%|r");
-	kbo:PrintMessage(focuscolor .."5. Mastery|r ".. kbo:RoundNumber(GetMastery()));
-	kbo:PrintMessage(focuscolor .."Healing Bonus|r ".. kbo:RoundNumber(GetSpellBonusHealing()));
-	kbo:PrintMessage(focuscolor .."Mana Regeneration|r ".. kbo:RoundNumber(_manaRegenBase) .." (".. kbo:RoundNumber(_manaRegenCast) ..")");
+	kbo:PrintMessage(kbo.focuscolor .."1. Intellect|r ".. UnitStat("player", 4));
+	kbo:PrintMessage(kbo.focuscolor .."2. Spell-Crit|r ".. _critColor .. kbo:RoundNumber(crit) .."%|r");
+	kbo:PrintMessage(kbo.focuscolor .."3. Haste|r ".. _hasteColor .. kbo:RoundNumber(haste) .."%|r");
+	kbo:PrintMessage(kbo.focuscolor .."4. Versatility|r ".. kbo:RoundNumber(_versatility) .."%|r");
+	kbo:PrintMessage(kbo.focuscolor .."5. Mastery|r ".. kbo:RoundNumber(GetMastery()));
+	kbo:PrintMessage(kbo.focuscolor .."Healing Bonus|r ".. kbo:RoundNumber(GetSpellBonusHealing()));
+	kbo:PrintMessage(kbo.focuscolor .."Mana Regeneration|r ".. kbo:RoundNumber(manaRegenBase) .." (".. kbo:RoundNumber(manaRegenCast) ..")");
 end
 
 -- Achievement Rankings
 function kbo.Slash:AchievementLeaderboard()
 	local leaderboard = kbo.Guild.GetAchievementLeaderboard();
-	local _foundme = false;
-	local _me = kbo.Data:GetPlayerForCharacter(UnitName("player"));
+	local _foundme, _me = false, kbo.Data:GetPlayerForCharacter(UnitName("player"));
 	kbo:PrintMessage("Achievement-Leaderboard:");
 	for i = 1, #leaderboard, 1 do
 		if (i <= 5) or (_foundme == false and leaderboard[i]["playername"] == _me) then
-			kbo:PrintMessage(i ..". |c".. leaderboard[i]["rankcolor"] .. leaderboard[i]["playername"] .."|r (".. leaderboard[i]["achievements"] ..")");
+			_rank = (leaderboard[i]["playername"] == _me) and kbo.focuscolor .. i ..".|r" or i ..".";
+			kbo:PrintMessage(_rank .." |c".. leaderboard[i]["rankcolor"] .. leaderboard[i]["playername"] .."|r (".. leaderboard[i]["achievements"] ..")");
 		end
 		if leaderboard[i]["playername"] == UnitName("player") then _foundme = true; end
 	end
@@ -381,19 +411,18 @@ kboData_Todo = {
 	},
 }
 function kbo.Slash:Todo()
-	local focuscolor = "|cffffff00";
 	-- General stuff
-	kbo:PrintMessage(focuscolor .."General:|r")
+	kbo:PrintMessage(kbo.focuscolor .."General:|r")
 	for _, _todo in pairs(kboData_Todo["general"]) do
 		kbo:PrintMessage(_todo["name"] .." in " .._todo["location"]);
 	end
 	-- Achiements
-	kbo:PrintMessage(focuscolor .."Achievements:|r")
+	kbo:PrintMessage(kbo.focuscolor .."Achievements:|r")
 	for _, _todo in pairs(kboData_Todo["achievements"]) do
 		kbo:PrintMessage(_todo["name"]);
 	end
 	-- Check instances
-	kbo:PrintMessage(focuscolor .."Instances:|r")
+	kbo:PrintMessage(kbo.focuscolor .."Instances:|r")
 	local instances = {};
 	for i = 1, GetNumSavedInstances(), 1 do
 		_name, _, _, _, _locked = GetSavedInstanceInfo(i);
@@ -407,11 +436,11 @@ function kbo.Slash:Todo()
 		end
 	end
 	-- Check Quests
-	kbo:PrintMessage(focuscolor .."Quests:|r");
+	kbo:PrintMessage(kbo.focuscolor .."Quests:|r");
 	local quests = GetQuestsCompleted();
 	for _, _todo in pairs(kboData_Todo["quests"]) do
 		if not kbo:ContainsKey(quests, _todo["id"]) then
-			kbo:PrintMessage(_todo["name"] .. _todo["quest"] .." for ".. _todo["reason"])
+			kbo:PrintMessage(_todo["name"] .. _todo["quest"] .." for ".. _todo["reason"]);
 		end
 	end
 end
@@ -435,28 +464,27 @@ function kbo.Slash:WhoIs(charactername)
 	else kbo:PrintMessage("No player for character ".. charactername .."."); end
 end
 
+
 -----------------
 -- Gruppe6
 -----------------
-kbo.Gruppe6 = {};
-kbo.Gruppe6.CHANNEL = "gruppe6";
-kbo.Gruppe6.text = {
+kbo.Gruppe6 = {
+	CHANNEL = "gruppe6",
 	deathmessage = "{skull}",
+	deathcounter = 0,
 }
-local deathcounter = 0;
 
 -- Do some stuff during Login
 function kbo.Gruppe6:OnLogin()
---	JoinPermanentChannel(gruppe6_Channel, nil, 6);
+	JoinPermanentChannel(kbo.Gruppe6:GetChannel(), nil, 4);
 	ListChannelByName(kbo.Gruppe6:GetChannel());
 end
 
 -- Assume embarassment for your mishaps
 function kbo.Gruppe6:OnDead()
-	local  _deathmessage = kbo.Gruppe6.text.deathmessage;
-	deathcounter = deathcounter + 1;
-	if(deathcounter > 1) then _deathmessage = _deathmessage .." Part "..deathcounter; end
-	kbo.Gruppe6:SendMessage(_deathmessage);
+	local _deathmessage = kbo.Gruppe6.deathmessage;
+	kbo.deathcounter = kbo.deathcounter + 1;
+	kbo.Gruppe6:SendMessage(string.rep(_deathmessage, kbo.deathcounter));
 end
 
 -- Standard answers
@@ -483,23 +511,23 @@ end
 -- Automated greetings and welcomes
 -----------------
 kbo.Greet = {};
-kbo.Greet.text = {
-	guildHello		= "Moin!",
-	guildWelcome	= "Moin.",
-	gruppe6Hello	= "\\o/",
-	gruppe6Back		= "re",
-}
 
 -- Say Hi - if this is the first time joining today
 function kbo.Greet:OnLogin()
-	if kbo.Data:IsFirstLoginToday() then
-		if not kbo.DEBUG then
-			SendChatMessage(kbo.Greet.text.guildHello, "GUILD");
-			kbo.Gruppe6:SendMessage(kbo.Gruppe6.text.gruppe6Hello);
-		else kbo:PrintDebug("Skipping hello-messages.");
+	-- Guild
+	local greetGuildActive, helloGuild, _ = kbo.Data:GetGreetingsGuild();
+	if greetGuildActive == true then
+		if kbo.Data:IsFirstLoginToday() then SendChatMessage(helloGuild, "GUILD"); end
+	else kbo:PrintDebug("Skipping Guild-Greetings."); end
+	-- Gruppe6
+	local greetG6Active, helloG6, backG6 = kbo.Data:GetGreetingsGruppe6();
+	if greetG6Active == true then
+		if kbo.Data:IsFirstLoginToday() then
+			kbo.Gruppe6:SendMessage(helloG6);
+		else
+			kbo.Gruppe6:SendMessage(backG6);
 		end
-	--elseif not kbo.DEBUG then kbo.Gruppe6:SendMessage(kbo.Greet.text.gruppe6Back); end
-	end
+	else kbo:PrintDebug("Skipping Gruppe6-Greetings."); end
 end
 
 -- Parse system-messages for online-notifications of guild-members
@@ -513,17 +541,14 @@ end
 
 --- Give a welcome (if the person is just logging in for the first time)
 function kbo.Greet:WelcomeMessage(charactername)
+	local greetActive, _, welcomeMessage = kbo.Data:GetGreetingsGuild();
+	if greetActive ~= true or welcomeMessage == "" then return; end
 	local playername = kbo.Data:GetPlayerForCharacter(charactername);
 	if playername then
 		local _stats = kbo.Data:GetPlayerData(playername);
 		kbo:PrintMessage("|Hplayer:".. charactername .."|h[".. charactername .."]|h is |c".. _stats["rankcolor"] .. playername .."|r.");
-		-- Check if person has been online today already
-		kbo:PrintDebug("Last online at " .. date("%T (%A)", _stats["lastonline"]));
 		if not kbo:IsToday(_stats["lastonline"]) then
-		--	if not kbo.DEBUG then C_Timer.After(4, function()
-		--		SendChatMessage(kbo.Greet.text.guildWelcome, "GUILD");
-		--	end) end
-			kbo:PrintDebug("Skipping welcome-message.");
+			C_Timer.After(4, function() SendChatMessage(welcomeMessage, "GUILD"); end);
 		end
 	else kbo:PrintDebug("Unknown character, ".. charactername ..".");
 	end

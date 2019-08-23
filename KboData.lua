@@ -4,20 +4,39 @@
 KboData = {};
 KboData.__index = KboData;
 
+-- Default Values for saved variables
+KboData.DEFAULTS = {
+	DEBUG = false,
+	statsCritMin = 30,
+	statsCritTar = 40,
+	statsCritMax = 43,
+	statsHasteMin = 10,
+	statsHasteTar = 15,
+	statsHasteMax = 20,
+	greetGuild = false,
+	greetGuildHello = "Moin!",
+	greetGuildWelcome = "Moin.",
+	greetGruppe6 = false,
+	greetGruppe6Hello = "\\o/",
+	greetGruppe6Back = "re",
+}
+
 -- Constructor
-function KboData:New(kboDatabase)
+function KboData:New()
 	self = {
-		RESTORED	= false,
-		VERSION		= 2,
-		lastonline	= kboData_Lastlogin or (time() - (27*60*60)), -- let's just assume yesterday as a default
+		RESTORED	= (kboData_Lastlogin ~= nil) and true or false,
+		VERSION		= 3
 	};
 	setmetatable(self, KboData);
+	-- LastLogin (let's just assume yesterday as a default)
+	self.lastonline = (self.RESTORED) and kboData_Lastlogin or (time() - (27*60*60));
+	-- Player Data
 	self.db = {};
 	self.db.__index = KboPlayer;
-	-- Restore previous data
-	if kboDatabase ~= nil then
-		self.RESTORED	= true;
-	end
+	-- Settings
+	self.settings = (self.RESTORED) and kboData_Settings or self.DEFAULTS;
+	self:ValidateSettings();
+
 	return self;
 end
 
@@ -25,6 +44,7 @@ end
 function KboData:Initialize(force)
 	if force == true then wipe(self.db); end
 	self:UpdateLogin();
+	self.settings = kboData.DEFAULTS;
 end
 
 
@@ -44,6 +64,17 @@ function KboData:UpdateLogin()
 	end
 end
 
+
+-----------------
+-- Settings functions
+-----------------
+
+-- Restore settings
+function KboData:ValidateSettings()
+	for var in pairs(self.DEFAULTS) do
+		if self.settings[var] == nil then self.settings[var] = self.DEFAULTS[var]; end
+	end
+end
 
 -----------------
 -- Guild functions
@@ -75,6 +106,9 @@ function KboData:UpdateRoster()
 		end
 		self.db[_playername]:UpdatePlayerLogin(_charlogoff);
 	end
+	local gCount = 0;
+	for _ in pairs(self.db) do gCount = gCount + 1; end
+	if gCount == nil then kbo:PrintDebug("Failed to retrieve Guild-Roster."); end
 end
 
 -- Create Achievement table
@@ -171,4 +205,63 @@ function KboData:GetLogin()
 end
 function KboData:GetDB()
 	return self.db;
+end
+function KboData:GetSettings()
+	return self.settings;
+end
+function KboData:GetDefaults()
+	return self.DEFAULTS;
+end
+function KboData:GetStatsCrit()
+	self:ValidateSettings();
+	return tonumber(self.settings['statsCritMin']), tonumber(self.settings['statsCritTar']), tonumber(self.settings['statsCritMax']);
+end
+function KboData:GetStatsHaste()
+	self:ValidateSettings();
+	return tonumber(self.settings['statsHasteMin']), tonumber(self.settings['statsHasteTar']), tonumber(self.settings['statsHasteMax']);
+end
+function KboData:GetGreetingsGuild()
+	self:ValidateSettings();
+	return self.settings['greetGuild'], self.settings['greetGuildHello'], self.settings['greetGuildWelcome'];
+end
+function KboData:GetGreetingsGruppe6()
+	self:ValidateSettings();
+	return self.settings['greetGruppe6'], self.settings['greetGruppe6Hello'], self.settings['greetGruppe6Back'];
+end
+function KboData:IsDebug() return self:GetDebug(); end
+function KboData:GetDebug()
+	return self.settings['DEBUG'];
+end
+
+-- Set functions
+function KboData:SetStatsCrit(min, tar, max)
+	if not tonumber(min) or not tonumber(tar) or not tonumber(max) then
+		kbo:PrintDebug("Expected float for statsCrit, ignoring changes!");
+		return false;
+	end
+	self.settings['statsCritMin'] = min;
+	self.settings['statsCritTar'] = tar;
+	self.settings['statsCritMax'] = max;
+end
+function KboData:SetStatsHaste(min, tar, max)
+	if not tonumber(min) or not tonumber(tar) or not tonumber(max) then
+		kbo:PrintDebug("Expected float for statsHaste, ignoring changes!");
+		return false;
+	end
+	self.settings['statsHasteMin'] = min;
+	self.settings['statsHasteTar'] = tar;
+	self.settings['statsHasteMax'] = max;
+end
+function KboData:SetGreetingsGuild(active, hello, welcome)
+	self.settings['greetGuild'] = (active == true) and true or false;
+	self.settings['greetGuildHello'] = hello;
+	self.settings['greetGuildWelcome'] = welcome;
+end
+function KboData:SetGreetingsGruppe6(active, hello, back)
+	self.settings['greetGruppe6'] = (active == true) and true or false;
+	self.settings['greetGruppe6Hello'] = hello;
+	self.settings['greetGruppe6Back'] = back;
+end
+function KboData:SetDebug(debug)
+	self.settings['DEBUG'] = (debug == true) and true or false;
 end

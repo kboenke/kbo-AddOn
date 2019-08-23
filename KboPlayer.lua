@@ -3,6 +3,7 @@
 -----------------
 KboPlayer = {};
 KboPlayer.__index = KboPlayer;
+KboPlayer.VERSION = 2;
 
 -- Constructor
 function KboPlayer:New(playername)
