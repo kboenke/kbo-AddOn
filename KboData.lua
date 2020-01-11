@@ -13,6 +13,9 @@ KboData.DEFAULTS = {
 	statsHasteMin = 10,
 	statsHasteTar = 15,
 	statsHasteMax = 20,
+	equipInt = true,
+	equipCrit = true,
+	equipHaste = true,
 	greetGuild = false,
 	greetGuildHello = "Moin!",
 	greetGuildWelcome = "Moin.",
@@ -44,7 +47,7 @@ end
 function KboData:Initialize(force)
 	if force == true then wipe(self.db); end
 	self:UpdateLogin();
-	self.settings = kboData.DEFAULTS;
+	self.settings = KboData.DEFAULTS;
 end
 
 
@@ -54,13 +57,13 @@ end
 
 -- Check if this is the first time logging in today
 function KboData:IsFirstLoginToday()
-	return kbo:IsToday(self.lastonline);
+	return (kbo:IsToday(self.lastonline)) and false or true;
 end
 
 -- Store first time (daily) we have been online
 function KboData:UpdateLogin()
 	if kbo:IsToday(self.lastonline) == false then
-		self.lastonline = time() - (3 *60 *60); --Adjusting timestamp so that the new day starts at 3AM
+		self.lastonline = time() + (3 *60 *60); --Adjusting timestamp so that the new day starts at 3AM
 	end
 end
 
@@ -220,6 +223,10 @@ function KboData:GetStatsHaste()
 	self:ValidateSettings();
 	return tonumber(self.settings['statsHasteMin']), tonumber(self.settings['statsHasteTar']), tonumber(self.settings['statsHasteMax']);
 end
+function KboData:GetEquipCheck()
+	self:ValidateSettings();
+	return self.settings['equipInt'], self.settings['equipCrit'], self.settings['equipHaste'];
+end
 function KboData:GetGreetingsGuild()
 	self:ValidateSettings();
 	return self.settings['greetGuild'], self.settings['greetGuildHello'], self.settings['greetGuildWelcome'];
@@ -251,6 +258,11 @@ function KboData:SetStatsHaste(min, tar, max)
 	self.settings['statsHasteMin'] = min;
 	self.settings['statsHasteTar'] = tar;
 	self.settings['statsHasteMax'] = max;
+end
+function KboData:SetEquipCheck(int, crit, haste)
+	self.settings['equipInt'] = (int == true) and true or false;
+	self.settings['equipCrit'] = (crit == true) and true or false;
+	self.settings['equipHaste'] = (haste == true) and true or false;
 end
 function KboData:SetGreetingsGuild(active, hello, welcome)
 	self.settings['greetGuild'] = (active == true) and true or false;

@@ -58,12 +58,9 @@ kbo.Data = {};
 
 -- Event function for Player-Login
 function kbo.Data:OnLogin()
-	if kboData_Lastlogin == nil then kbo.Data:Initialize(); else kbo.Data = KboData:New(); end
+	kbo.Data = KboData:New();
+	if kboData_Lastlogin == nil then kbo.Data:Initialize(); end
 	kbo.Data:UpdateLogin();
-	kboConfig:Initialize();
-	-- Announce settings
-	kbo:PrintMessage("Version ".. kbo.VERSION);
-	kbo:PrintDebug("Debug-Messages are ".. kbo.focuscolor .."ON|r!");
 end
 
 
@@ -76,6 +73,7 @@ kbo.Events = {};
 function kbo.Events:ADDON_LOADED(addon)
 	if addon == "kbo" then
 		kbo.Data:OnLogin();
+		kboConfig:Initialize();
 	end
 end
 function kbo.Events:PLAYER_LOGIN(...)
@@ -84,6 +82,9 @@ function kbo.Events:PLAYER_LOGIN(...)
 		kbo.Greet:OnLogin();
 		kbo.Gruppe6:OnLogin();
 	end);
+	-- Announce settings
+	kbo:PrintMessage("Version ".. kbo.VERSION);
+	kbo:PrintDebug("Debug-Messages are ".. kbo.focuscolor .."ON|r!");
 end
 function kbo.Events:PLAYER_ENTERING_WORLD(...)
 end
@@ -177,8 +178,11 @@ local function SlashHandler(msg, editBox)
 	elseif _msg == "showdata" then
 		local _playername = (args ~= "") and args or false;
 		if not _playername then
+			_lastonline = date("%c", kbo.Data.lastonline);
+			_firstlogin = (kbo.Data:IsFirstLoginToday()) and "true" or "false";
 			_restored = (kbo.Data.RESTORED) and "true" or "false";
-			kbo:PrintMessage(kbo.focuscolor .."lastonline|r ".. kbo.Data.lastonline);
+			kbo:PrintMessage(kbo.focuscolor .."lastonline|r ".. _lastonline);
+			kbo:PrintMessage(kbo.focuscolor .."firstlogin|r ".. _firstlogin)
 			kbo:PrintMessage(kbo.focuscolor .."restored|r ".. _restored);
 			kbo:PrintMessage(kbo.focuscolor .."version|r ".. kbo.Data.VERSION);
 		else
@@ -246,6 +250,7 @@ end
 function kbo.Slash:EquipmentCheck()
 	-- Get equipped items
 	local items, enchantedSlots = {}, {10, 11, 12, 16, 17};
+	local equipConfInt, equipConfCrit, equipConfHaste = kbo.Data:GetEquipCheck();
 	for i = 0, 18, 1 do
 		local _itemLink = GetInventoryItemLink("player", i);
 		if _itemLink ~= nil and i ~= 4 then --skipping shirt
@@ -258,7 +263,10 @@ function kbo.Slash:EquipmentCheck()
 			  = string.find(_itemLink, "|?c?f?f?(%x*)|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?");
 			local _stats = GetItemStats(_itemLink);
 			-- Check for missing stuff
-			if not (kbo:ContainsKey(_stats, "^ITEM_MOD_CRIT", false) or kbo:ContainsKey(_stats, "^ITEM_MOD_INTELLECT", false)) then
+			if	(equipConfInt and not kbo:ContainsKey(_stats, "^ITEM_MOD_INTELLECT", false)) or
+				(equipConfCrit and not (kbo:ContainsKey(_stats, "^ITEM_MOD_CRIT", false))) or
+				(equipConfHaste and not (kbo:ContainsKey(_stats, "^ITEM_MOD_HASTE", false)))
+				then
 				_remark = "Wrong stats";
 			end
 			if kbo:ContainsValue(enchantedSlots, i, true) then
@@ -352,24 +360,19 @@ end
 -- Todo-List
 kboData_Todo = {
 	general = {
-		{
-			name = "Feed Ravenous Slime daily",
-			location = "Nazjatar (71.71 25.70)",
-			reason = {}
-		},
-		{
-			name = "Feed Ravenous Slime daily",
-			location = "Nazjatar (54.90 48.70)",
-			reason = {}
-		},
-		{
-			name = "Poseidon",
-			location = "",
-			reason = {}
-		}
+--		{
+--			name = "Feed Ravenous Slime daily",
+--			location = "Nazjatar (71.71 25.70)",
+--			reason = {}
+--		},
+--		{
+--			name = "Feed Ravenous Slime daily",
+--			location = "Nazjatar (54.90 48.70)",
+--			reason = {}
+--		},
 	},
 	achievements = {
-		{ name = "|cffffff00|Hachievement:7325:"..strsub(UnitGUID("player"), 3)..":0:0:0:0:0:0:0:0|h[Now I Am the Master]|h|r" },
+--		{ name = "|cffffff00|Hachievement:7325:"..strsub(UnitGUID("player"), 3)..":0:0:0:0:0:0:0:0|h[Now I Am the Master]|h|r" },
 	},
 	instances = {
 		{
@@ -382,14 +385,14 @@ kboData_Todo = {
 			boss = "Kael'Thas",
 			items = { "|cffa335ee|Hitem:32458::::::::120:::::|h[Ashes of Al'ar]|h|r" }
 		},
-		{
-			name = "The Eye of Eternity",
-			boss = "Malygos",
-			items = { 
-				"|cffa335ee|Hitem:43952::::::::120:::::|h[Reins of the Azure Drake]|h|r",
-				"|cffa335ee|Hitem:43953::::::::120:::::|h[Reins of the Blue Drake]|h|r"
-			},
-		},
+--		{
+--			name = "The Eye of Eternity",
+--			boss = "Malygos",
+--			items = { 
+--				"|cffa335ee|Hitem:43952::::::::120:::::|h[Reins of the Azure Drake]|h|r",
+--				"|cffa335ee|Hitem:43953::::::::120:::::|h[Reins of the Blue Drake]|h|r"
+--			},
+--		},
 		{
 			name = "Vault of Archavon",
 			boss = "Archavon (10)",
@@ -401,12 +404,40 @@ kboData_Todo = {
 			items = { "|cffa335ee|Hitem:40889::::::::120:::::|h[Furious Gladiator's Bracers of Triumph]|h|r" }
 		},
 	},
-	quests = {
+	worldbosses = {
 		{
-			name = "Weekly: ",
-			quest = "|cffffff00|Hquest:55121:-1|h[The Laboratory of Mardivas]|h|r",
-			id = 55121,
-			reason = "|cffffff00|Hachievement:13699:"..strsub(UnitGUID("player"), 3)..":0:0:0:0:0:0:0:0|h[Periodic Destruction]|h|r",
+			name = "Galleon",
+			item = "|cffa335ee|Hitem:89783::::::::120:::::|h[Son of Galleon's Saddle]|h|r",
+			id = 32098
+		},
+		{
+			name = "Sha of Anger",
+			item = "|cffa335ee|Hitem:87771::::::::120:::::|h[Reins of the Heavenly Onyx Cloud Serpent]|h|r",
+			id = 32099
+		},
+		{
+			name = "Nalak",
+			item = "|cffa335ee|Hitem:95057::::::::120:::::|h[Reins of the Thundering Cobalt Cloud Serpent]|h|r",
+			id = 32518
+		},
+		{
+			name = "Oondesta",
+			item = "|cffa335ee|Hitem:94228::::::::120:::::|h[Reins of the Cobalt Primordial Direhorn]|h|r",
+			id = 32519
+		},
+	},
+	quests = {
+--		{
+--			name = "Weekly: ",
+--			quest = "|cffffff00|Hquest:55121:-1|h[The Laboratory of Mardivas]|h|r",
+--			id = 55121,
+--			reason = "|cffffff00|Hachievement:13699:"..strsub(UnitGUID("player"), 3)..":0:0:0:0:0:0:0:0|h[Periodic Destruction]|h|r",
+--		}
+		{
+			name = "Annoy-o-Tron Gang",
+			quest = "|cffffff00|Hquest:55743:-1|h[More Recycling]|h|r",
+			id = 55743,
+			reason = "|cffffff00|Hachievement:13479:"..strsub(UnitGUID("player"), 3)..":0:0:0:0:0:0:0:0|h[Junkyard Architect]|h|r"
 		}
 	},
 }
@@ -441,6 +472,14 @@ function kbo.Slash:Todo()
 	for _, _todo in pairs(kboData_Todo["quests"]) do
 		if not kbo:ContainsKey(quests, _todo["id"]) then
 			kbo:PrintMessage(_todo["name"] .. _todo["quest"] .." for ".. _todo["reason"]);
+		end
+	end
+	-- Check World Bosses
+	kbo:PrintMessage(kbo.focuscolor .."World Bosses:|r")
+	local instances = {};
+	for _, _todo in pairs(kboData_Todo["worldbosses"]) do
+		if not IsQuestFlaggedCompleted(_todo["id"]) then
+			kbo:PrintMessage(_todo["name"] .." for ".. _todo["item"]);
 		end
 	end
 end
@@ -483,8 +522,9 @@ end
 -- Assume embarassment for your mishaps
 function kbo.Gruppe6:OnDead()
 	local _deathmessage = kbo.Gruppe6.deathmessage;
-	kbo.deathcounter = kbo.deathcounter + 1;
-	kbo.Gruppe6:SendMessage(string.rep(_deathmessage, kbo.deathcounter));
+	kbo.Gruppe6.deathcounter = kbo.Gruppe6.deathcounter + 1;
+	if kbo.Gruppe6.deathcounter > 15 then kbo.Gruppe6:SendMessage(_deathmessage .."..."); else
+		kbo.Gruppe6:SendMessage(string.rep(_deathmessage, kbo.Gruppe6.deathcounter)); end
 end
 
 -- Standard answers

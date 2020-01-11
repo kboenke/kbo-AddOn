@@ -1,8 +1,8 @@
-## Interface: 80200
+## Interface: 80205
 ## Title: kbo
 ## Notes: Personal Client-Extensions
 ## Author: kbo
-## Version: 1.2.6
+## Version: 1.2.8
 ## X-License: MIT License
 ## SavedVariables: kboData_Lastlogin, kboData_Settings
 
