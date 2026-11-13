@@ -553,22 +553,12 @@ function kbo.Gruppe6:OnDead()
 		kbo.Gruppe6:SendMessage(string.rep(_deathmessage, kbo.Gruppe6.deathcounter)); end
 end
 
--- Standard answers
-function kbo.Gruppe6:ParseMessage(msg, author)
-	if not kbo.GUILD_ROSTER_ENABLED then return; end
-	if kbo.Data:GetPlayerForCharacter(author) == "Lilitu" then
-		if kbo:ContainsString(msg, "^Nein[\.!]?$", false) then kbo.Gruppe6:SendMessage("Wohl.");
-		elseif kbo:ContainsString(msg, "^Ja[\.!]?$", false) then kbo.Gruppe6:SendMessage("Nein.");
-		end
-	end
-end
-
 -- Return function
 function kbo.Gruppe6:GetChannel()
 	return kbo.Gruppe6.CHANNEL;
 end
 
--- Send a message to our channel
+-- Send a message to our channel (deprecated)
 function kbo.Gruppe6:SendMessage(msg)
 	local channelNumber = GetChannelName(kbo.Gruppe6:GetChannel());
 	if channelNumber > 0 then
@@ -586,17 +576,12 @@ kbo.Greet = {};
 
 -- Say Hi - if this is the first time joining today
 function kbo.Greet:OnLogin()
-	kbo:PrintDebug("Last saved login: " .. date("%c", kbo.Data.lastonline))
+	kbo:PrintDebug("Saved login date: " .. date("%c", kbo.Data.lastonline))
 	-- Guild
 	local greetGuildActive, helloGuild, _ = kbo.Data:GetGreetingsGuild();
 	if greetGuildActive == true then
 		if kbo.Data:IsFirstLoginToday() then SendChatMessage(helloGuild, "GUILD"); end
 	else kbo:PrintDebug("Skipping Guild-Greetings."); end
-	-- Gruppe6
-	local greetG6Active, helloG6, backG6 = kbo.Data:GetGreetingsGruppe6();
-	if greetG6Active == true then
-		if kbo.Data:IsFirstLoginToday() then kbo.Gruppe6:SendMessage(helloG6); end
-	else kbo:PrintDebug("Skipping Gruppe6-Greetings."); end
 end
 
 -- Parse system-messages for online-notifications of guild-members
