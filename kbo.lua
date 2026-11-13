@@ -4,6 +4,7 @@
 kbo = {
 	FRAME = CreateFrame("Frame"),
 	VERSION = "2.5.3",
+	GUILD_ROSTER_ENABLED = kboConfig.GUILD_ROSTER_ENABLED,
 	REALMSUFFIX = "-".. GetRealmName(),
 	focuscolor = "|cffffff00",
 }
@@ -78,9 +79,8 @@ function kbo.Events:ADDON_LOADED(addon)
 end
 function kbo.Events:PLAYER_LOGIN(...)
 	C_Timer.After(10, function()
-		kbo.Data:UpdateRoster();
-		kbo.Greet:OnLogin();
 		kbo.Gruppe6:OnLogin();
+		kbo.Greet:OnLogin();
 	end);
 	-- Announce settings
 	kbo:PrintMessage("Version ".. kbo.VERSION);
@@ -117,7 +117,12 @@ end
 -- Hook event-handlers
 kbo.FRAME:SetScript("OnEvent", function(self, event, ...) kbo.Events[event](self, ...); end)
 kbo.FRAME:UnregisterAllEvents();
-for eventhandler in pairs(kbo.Events) do kbo.FRAME:RegisterEvent(eventhandler); end
+for eventhandler in pairs(kbo.Events) do
+	local rosterEvent = eventhandler == "PLAYER_GUILD_UPDATE" or eventhandler == "ACHIEVEMENT_EARNED";
+	if not rosterEvent or kbo.GUILD_ROSTER_ENABLED then
+		kbo.FRAME:RegisterEvent(eventhandler);
+	end
+end
 
 
 -----------------
@@ -163,7 +168,7 @@ local function SlashHandler(msg, editBox)
 		kbo:PrintMessage(kbo.focuscolor .."twinks|r twink-leaderboard.");
 		kbo:PrintMessage(kbo.focuscolor .."whois <name>|r show who the player behind that character is.");
 	elseif _msg == "config" then
-		InterfaceOptionsFrame_OpenToCategory(kboConfig.Panel or "kbo");
+		Settings.OpenToCategory(kboConfig.Category:GetID());
 	-- Debug actions
 	elseif _msg == "resetlastonline" then
 		if kbo.Data:IsDebug() then kbo.Data:UpdatLogin(); end
@@ -171,10 +176,14 @@ local function SlashHandler(msg, editBox)
 		if kbo.Data:IsDebug() then
 			kbo.Data:Initialize();
 			kbo:PrintMessage("Player-Data has been reset");
-			kbo.Data:UpdateRoster();
+			if kbo.GUILD_ROSTER_ENABLED then kbo.Data:UpdateRoster(); end
 		end
 	elseif _msg == "update" then
-		kbo.Data:UpdateRoster();
+		if kbo.GUILD_ROSTER_ENABLED then
+			kbo.Data:UpdateRoster();
+		else
+			kbo:PrintMessage("Guild roster features are currently disabled.");
+		end
 	elseif _msg == "showdata" then
 		local _playername = (args ~= "") and args or false;
 		if not _playername then
@@ -206,6 +215,10 @@ SlashCmdList["kbo"] = SlashHandler
 
 -- How much do I still have to do?
 function kbo.Slash:AchievementsRemaining()
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	-- Update Guild-Roster
 	kbo.Data:UpdateRoster();
 	if kbo.Data:GetPlayerForCharacter(UnitName("player")) == false then
@@ -345,6 +358,10 @@ end
 
 -- Achievement Rankings
 function kbo.Slash:AchievementLeaderboard()
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	local leaderboard = kbo.Guild.GetAchievementLeaderboard();
 	local _foundme, _me = false, kbo.Data:GetPlayerForCharacter(UnitName("player"));
 	kbo:PrintMessage("Achievement-Leaderboard:");
@@ -486,6 +503,10 @@ end
 
 -- Twinks...
 function kbo.Slash:TwinkLeaderboard()
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	local leaderboard = kbo.Guild.GetTwinkLeaderboard();
 	local _l = (#leaderboard > 5) and 5 or #leaderboard;
 	kbo:PrintMessage("Twink-Leaderboard:");
@@ -496,6 +517,10 @@ end
 
 -- WhoIs this character?
 function kbo.Slash:WhoIs(charactername)
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	local _playername = kbo.Data:GetPlayerForCharacter(charactername);
 	if _playername then
 		local _stats = kbo.Data:GetPlayerData(_playername);
@@ -529,6 +554,7 @@ end
 
 -- Standard answers
 function kbo.Gruppe6:ParseMessage(msg, author)
+	if not kbo.GUILD_ROSTER_ENABLED then return; end
 	if kbo.Data:GetPlayerForCharacter(author) == "Lilitu" then
 		if kbo:ContainsString(msg, "^Nein[\.!]?$", false) then kbo.Gruppe6:SendMessage("Wohl.");
 		elseif kbo:ContainsString(msg, "^Ja[\.!]?$", false) then kbo.Gruppe6:SendMessage("Nein.");
@@ -543,7 +569,12 @@ end
 
 -- Send a message to our channel
 function kbo.Gruppe6:SendMessage(msg)
-	SendChatMessage(msg, "CHANNEL", nil, 6);
+	local channelNumber = GetChannelName(kbo.Gruppe6:GetChannel());
+	if channelNumber > 0 then
+		SendChatMessage(msg, "CHANNEL", nil, channelNumber);
+	else
+		kbo:PrintDebug("Gruppe6 channel is not available.");
+	end
 end
 
 
@@ -581,6 +612,7 @@ end
 
 --- Give a welcome (if the person is just logging in for the first time)
 function kbo.Greet:WelcomeMessage(charactername)
+	if not kbo.GUILD_ROSTER_ENABLED then return; end
 	local greetActive, _, welcomeMessage = kbo.Data:GetGreetingsGuild();
 	if greetActive ~= true or welcomeMessage == "" then return; end
 	local playername = kbo.Data:GetPlayerForCharacter(charactername);
@@ -592,7 +624,7 @@ function kbo.Greet:WelcomeMessage(charactername)
 		end
 	else kbo:PrintDebug("Unknown character, ".. charactername ..".");
 	end
-	kbo.Data:UpdateRoster();
+	if kbo.GUILD_ROSTER_ENABLED then kbo.Data:UpdateRoster(); end
 end
 
 

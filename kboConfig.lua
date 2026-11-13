@@ -5,6 +5,7 @@
 -- Static Definitions
 kboConfig = {
 	VERSION = 2,
+	GUILD_ROSTER_ENABLED = false,
 }
 
 -- Text Templates
@@ -47,22 +48,23 @@ function kboConfig:Initialize()
 	kboConfig.TodoPanel.name = "Todo Options";
 	kboConfig.TodoPanel.parent = kboConfig.Panel.name;
 
-	-- Register Panels
-	InterfaceOptions_AddCategory(kboConfig.Panel);
-	InterfaceOptions_AddCategory(kboConfig.TodoPanel);
+	-- Register panels with the current Settings system
+	kboConfig.Category = Settings.RegisterCanvasLayoutCategory(kboConfig.Panel, kboConfig.Panel.name);
+	Settings.RegisterAddOnCategory(kboConfig.Category);
+	kboConfig.TodoCategory = Settings.RegisterCanvasLayoutSubcategory(kboConfig.Category, kboConfig.TodoPanel, kboConfig.TodoPanel.name);
+	Settings.RegisterAddOnCategory(kboConfig.TodoCategory);
 
 	-- Hook Scripts
 	if kbo.Data:IsDebug() then
-		kboConfig.Panel.refresh	= function(self) xpcall(function() kboConfig:UpdateOptions(self); end, geterrorhandler()) end
-		kboConfig.TodoPanel.refresh	= function(self) xpcall(function() kboConfig:UpdateTodoOptions(self); end, geterrorhandler()) end
-		kboConfig.Panel.okay	= function(self) xpcall(function() kboConfig:SaveOptions(self); end, geterrorhandler()) end
-		kboConfig.Panel.cancel	= function(self) xpcall(function() kboConfig:CancelOptions(self); end, geterrorhandler()) end
-		kboConfig.Panel.default	= function(self) xpcall(function() kboConfig:ResetOptions(self); end, geterrorhandler()) end
+		kboConfig.Panel.OnRefresh = function(self) xpcall(function() kboConfig:UpdateOptions(self); end, geterrorhandler()) end
+		kboConfig.Panel.OnCommit = function(self) xpcall(function() kboConfig:SaveOptions(self); end, geterrorhandler()) end
+		kboConfig.Panel.OnDefault = function(self) xpcall(function() kboConfig:ResetOptions(self); end, geterrorhandler()) end
+		kboConfig.TodoPanel.OnRefresh = function() xpcall(function() kboConfig:UpdateTodoOptions(kboConfig.TodoPanel); end, geterrorhandler()) end
 	else
-		kboConfig.Panel.refresh	= function(self) kboConfig:UpdateOptions(self); end
-		kboConfig.Panel.okay	= function(self) kboConfig:SaveOptions(self); end
-		kboConfig.Panel.cancel	= function(self) kboConfig:CancelOptions(self); end
-		kboConfig.Panel.default	= function(self) kboConfig:ResetOptions(self); end
+		kboConfig.Panel.OnRefresh = function(self) kboConfig:UpdateOptions(self); end
+		kboConfig.Panel.OnCommit = function(self) kboConfig:SaveOptions(self); end
+		kboConfig.Panel.OnDefault = function(self) kboConfig:ResetOptions(self); end
+		kboConfig.TodoPanel.OnRefresh = function() kboConfig:UpdateTodoOptions(kboConfig.TodoPanel); end
 	end
 
 	-- Create Content
@@ -194,7 +196,7 @@ function kboConfig:CreateTodoPanel(parent)
 	parent.Tabs.fTodoMain = kboConfig:CreateTodoPanelTab(parent);
 	parent.pTodoMainTitle = kboConfig:CreateTitle(parent.Tabs.fTodoMain, nil, 5, 5);
 	parent.pTodoMainTitle:SetText(kboConfig.Text.todoMainTitle .." Chores");
-	parent.bTodoMainTab = CreateFrame("Button", "$parentTab1", parent, "CharacterFrameTabButtonTemplate");
+	parent.bTodoMainTab = CreateFrame("Button", "$parentTab1", parent, "PanelTabButtonTemplate");
 	parent.bTodoMainTab:SetPoint("BOTTOMLEFT", parent, 8, -28);
 	parent.bTodoMainTab:SetText(kboConfig.Text.todoMainTitle);
 	parent.bTodoMainTab:SetScript("OnClick", function(self) kboConfig:TodoTabClicked(self:GetName()); end);
@@ -211,7 +213,7 @@ function kboConfig:CreateTodoPanel(parent)
 	parent.Tabs.fTodoQuests = kboConfig:CreateTodoPanelTab(parent);
 	parent.pTodoQuestsTitle = kboConfig:CreateTitle(parent.Tabs.fTodoQuests, nil, 5, 5);
 	parent.pTodoQuestsTitle:SetText(kboConfig.Text.todoQuestsTitle .." Chores");
-	parent.bTodoQuestsTab = CreateFrame("Button", "$parentTab2", parent, "CharacterFrameTabButtonTemplate");
+	parent.bTodoQuestsTab = CreateFrame("Button", "$parentTab2", parent, "PanelTabButtonTemplate");
 	parent.bTodoQuestsTab:SetPoint("LEFT", parent.bTodoMainTab, "RIGHT", _taboffset, 0);
 	parent.bTodoQuestsTab:SetText(kboConfig.Text.todoQuestsTitle);
 	parent.bTodoQuestsTab:SetScript("OnClick", function(self) kboConfig:TodoTabClicked(self:GetName()); end);
@@ -219,7 +221,7 @@ function kboConfig:CreateTodoPanel(parent)
 	parent.Tabs.fTodoAchievements = kboConfig:CreateTodoPanelTab(parent);
 	parent.pTodoAchievementsTitle = kboConfig:CreateTitle(parent.Tabs.fTodoAchievements, nil, 5, 5);
 	parent.pTodoAchievementsTitle:SetText(kboConfig.Text.todoAchievementsTitle .." Chores");
-	parent.bTodoAchievementsTab = CreateFrame("Button", "$parentTab3", parent, "CharacterFrameTabButtonTemplate");
+	parent.bTodoAchievementsTab = CreateFrame("Button", "$parentTab3", parent, "PanelTabButtonTemplate");
 	parent.bTodoAchievementsTab:SetPoint("LEFT", parent.bTodoQuestsTab, "RIGHT", _taboffset, 0);
 	parent.bTodoAchievementsTab:SetText(kboConfig.Text.todoAchievementsTitle);
 	parent.bTodoAchievementsTab:SetScript("OnClick", function(self) kboConfig:TodoTabClicked(self:GetName()); end);
@@ -227,13 +229,12 @@ function kboConfig:CreateTodoPanel(parent)
 	parent.Tabs.fTodoInstances = kboConfig:CreateTodoPanelTab(parent);
 	parent.pTodoInstancesTitle = kboConfig:CreateTitle(parent.Tabs.fTodoInstances, nil, 5, 5);
 	parent.pTodoInstancesTitle:SetText(kboConfig.Text.todoInstancesTitle .." Chores");
-	parent.bTodoInstancesTab = CreateFrame("Button", "$parentTab4", parent, "CharacterFrameTabButtonTemplate");
+	parent.bTodoInstancesTab = CreateFrame("Button", "$parentTab4", parent, "PanelTabButtonTemplate");
 	parent.bTodoInstancesTab:SetPoint("LEFT", parent.bTodoAchievementsTab, "RIGHT", _taboffset, 0);
 	parent.bTodoInstancesTab:SetText(kboConfig.Text.todoInstancesTitle);
 	parent.bTodoInstancesTab:SetScript("OnClick", function(self) kboConfig:TodoTabClicked(self:GetName()); end);
 	-- Setup initial view
-	local _tabs = 0;
-	for _ in pairs(parent.Tabs) do _tabs = _tabs + 1; end
+	local _tabs = #parent.Tabs;
 	PanelTemplates_SetNumTabs(parent, _tabs);
 	kboConfig:TodoTabClicked("kboConfigTodoPanelTab1");
 end
@@ -402,7 +403,7 @@ function kboConfig:CreateSlider(name, parent)
 	slider.Valuebox:SetPoint("BOTTOM", slider, 0, -12);
 	slider.Valuebox:SetMaxLetters(4);
 	slider.Valuebox:SetJustifyH("CENTER");
-	slider.Valuebox:SetFontObject("GameFontNormalGraySmall");
+	slider.Valuebox:SetFontObject("GameFontNormal");
 	-- Dynamic Updates
 	slider.Valuebox:SetScript("OnEnterPressed",
 		function(self)
