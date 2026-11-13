@@ -57,13 +57,13 @@ end
 
 -- Check if this is the first time logging in today
 function KboData:IsFirstLoginToday()
-	return (kbo:IsToday(self.lastonline)) and false or true;
+	return not kbo:IsToday(self.lastonline);
 end
 
 -- Store first time (daily) we have been online
 function KboData:UpdateLogin()
 	if kbo:IsToday(self.lastonline) == false then
-		self.lastonline = time() + (3 *60 *60); --Adjusting timestamp so that the new day starts at 3AM
+		self.lastonline = time()
 	end
 end
 

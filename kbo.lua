@@ -3,7 +3,7 @@
 -----------------
 kbo = {
 	FRAME = CreateFrame("Frame"),
-	VERSION = "2.5.3",
+	VERSION = "2.5.4",
 	GUILD_ROSTER_ENABLED = kboConfig.GUILD_ROSTER_ENABLED,
 	REALMSUFFIX = "-".. GetRealmName(),
 	focuscolor = "|cffffff00",
@@ -51,6 +51,7 @@ function kbo:RoundNumber(number)
 	_number = _number + 0.5 - (_number + 0.5) % 1
 	return _number / 10;
 end
+
 
 -----------------
 -- Data Handling
@@ -585,6 +586,7 @@ kbo.Greet = {};
 
 -- Say Hi - if this is the first time joining today
 function kbo.Greet:OnLogin()
+	kbo:PrintDebug("Last saved login: " .. date("%c", kbo.Data.lastonline))
 	-- Guild
 	local greetGuildActive, helloGuild, _ = kbo.Data:GetGreetingsGuild();
 	if greetGuildActive == true then
@@ -593,11 +595,7 @@ function kbo.Greet:OnLogin()
 	-- Gruppe6
 	local greetG6Active, helloG6, backG6 = kbo.Data:GetGreetingsGruppe6();
 	if greetG6Active == true then
-		if kbo.Data:IsFirstLoginToday() then
-			kbo.Gruppe6:SendMessage(helloG6);
-		else
-			kbo.Gruppe6:SendMessage(backG6);
-		end
+		if kbo.Data:IsFirstLoginToday() then kbo.Gruppe6:SendMessage(helloG6); end
 	else kbo:PrintDebug("Skipping Gruppe6-Greetings."); end
 end
 
