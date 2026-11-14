@@ -103,7 +103,7 @@ function kbo.Events:CHAT_MSG_SYSTEM(message)
 	kbo.Greet:ParseSystemMessage(message);
 end
 function kbo.Events:CHAT_MSG_CHANNEL(message, author, _, _, target, flags, _, channelnumber, channelname, ...)
-	-- Guild channel monitoring - ParseMessage was removed
+	if channelname == kbo.Gruppe6:GetChannel() then kbo.Gruppe6:ParseMessage(message, author); end
 end
 --function kbo.Events:CHAT_MSG_CHANNEL_JOIN(_, name, _, _, channelnumber, channelname)
 --	if channelname == gruppe6_Channel then Greet_WelcomeMessage(name); end
@@ -139,6 +139,8 @@ local function SlashHandler(msg, editBox)
 	local _msg, args = msg:match("^(%S*)%s*(.-)$");
 	_msg = string.lower(_msg);
 	-- Standard actions
+	if _msg == "achievements" then
+		kbo.Slash:AchievementLeaderboard();
 	elseif _msg == "astats" then
 		kbo.Slash:AchievementsRemaining();
 	elseif _msg == "equip" then
@@ -152,12 +154,20 @@ local function SlashHandler(msg, editBox)
 		kbo.Slash:MyStats();
 	elseif _msg == "todo" then
 		kbo.Slash:Todo();
+	elseif _msg == "twinks" then
+		kbo.Slash:TwinkLeaderboard();
+	elseif _msg == "who" or _msg == "whois" then
+		local _charactername = (args ~= "") and args or "Kabori";
+		kbo.Slash:WhoIs(_charactername);
 	elseif _msg == "help" or _msg == "?" then
+		kbo:PrintMessage(kbo.focuscolor .."achievements|r print achievement ranking for guild.");
 		kbo:PrintMessage(kbo.focuscolor .."astats|r show achievment-progress.");
 		kbo:PrintMessage(kbo.focuscolor .."equip|r analyse equiped items.");
 		kbo:PrintMessage(kbo.focuscolor .."quests|r status of quest-queue.");
 		kbo:PrintMessage(kbo.focuscolor .."qstatus <id>|r returns wether or not this quest has been done.")
 		kbo:PrintMessage(kbo.focuscolor .."stats|r list most important player-statistics.");
+		kbo:PrintMessage(kbo.focuscolor .."twinks|r twink-leaderboard.");
+		kbo:PrintMessage(kbo.focuscolor .."whois <name>|r show who the player behind that character is.");
 	elseif _msg == "config" then
 		Settings.OpenToCategory(kboConfig.Category:GetID());
 	-- Debug actions
@@ -206,6 +216,10 @@ SlashCmdList["kbo"] = SlashHandler
 
 -- How much do I still have to do?
 function kbo.Slash:AchievementsRemaining()
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	-- Update Guild-Roster
 	kbo.Data:UpdateRoster();
 	if kbo.Data:GetPlayerForCharacter(UnitName("player")) == false then
@@ -216,10 +230,6 @@ function kbo.Slash:AchievementsRemaining()
 	local points = GetTotalAchievementPoints(); -- This will be different from data on Guild-Roster!
 	local _missing, _relation = total - completed, (completed / total) * 100;
 	local _percentage = kbo:RoundNumber(_relation);
-	-- Output w/o guild-ranking
-	_output = "%s achievements remaining (%s %% done).";
-	kbo:PrintMessage(string.format(_output, _missing, _percentage));
-	return;
 	-- Get guild-ranking
 	local leaderboard, myPlayer, myRank, nextPoints = kbo.Guild:GetAchievementLeaderboard(), kbo.Data:GetPlayerForCharacter(UnitName("player")), 0, 0;
 	for i = 1, #leaderboard, 1 do if leaderboard[i]["playername"] == myPlayer then myRank = i; end end
@@ -349,6 +359,10 @@ end
 
 -- Achievement Rankings
 function kbo.Slash:AchievementLeaderboard()
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	local leaderboard = kbo.Guild.GetAchievementLeaderboard();
 	local _foundme, _me = false, kbo.Data:GetPlayerForCharacter(UnitName("player"));
 	kbo:PrintMessage("Achievement-Leaderboard:");
@@ -490,6 +504,10 @@ end
 
 -- Twinks...
 function kbo.Slash:TwinkLeaderboard()
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	local leaderboard = kbo.Guild.GetTwinkLeaderboard();
 	local _l = (#leaderboard > 5) and 5 or #leaderboard;
 	kbo:PrintMessage("Twink-Leaderboard:");
@@ -500,6 +518,10 @@ end
 
 -- WhoIs this character?
 function kbo.Slash:WhoIs(charactername)
+	if not kbo.GUILD_ROSTER_ENABLED then
+		kbo:PrintMessage("Guild roster features are currently disabled.");
+		return;
+	end
 	local _playername = kbo.Data:GetPlayerForCharacter(charactername);
 	if _playername then
 		local _stats = kbo.Data:GetPlayerData(_playername);
@@ -531,12 +553,22 @@ function kbo.Gruppe6:OnDead()
 		kbo.Gruppe6:SendMessage(string.rep(_deathmessage, kbo.Gruppe6.deathcounter)); end
 end
 
+-- Standard answers
+function kbo.Gruppe6:ParseMessage(msg, author)
+	if not kbo.GUILD_ROSTER_ENABLED then return; end
+	if kbo.Data:GetPlayerForCharacter(author) == "Lilitu" then
+		if kbo:ContainsString(msg, "^Nein[\.!]?$", false) then kbo.Gruppe6:SendMessage("Wohl.");
+		elseif kbo:ContainsString(msg, "^Ja[\.!]?$", false) then kbo.Gruppe6:SendMessage("Nein.");
+		end
+	end
+end
+
 -- Return function
 function kbo.Gruppe6:GetChannel()
 	return kbo.Gruppe6.CHANNEL;
 end
 
--- Send a message to our channel (deprecated)
+-- Send a message to our channel
 function kbo.Gruppe6:SendMessage(msg)
 	local channelNumber = GetChannelName(kbo.Gruppe6:GetChannel());
 	if channelNumber > 0 then
@@ -554,12 +586,17 @@ kbo.Greet = {};
 
 -- Say Hi - if this is the first time joining today
 function kbo.Greet:OnLogin()
-	kbo:PrintDebug("Saved login date: " .. date("%c", kbo.Data.lastonline))
+	kbo:PrintDebug("Last saved login: " .. date("%c", kbo.Data.lastonline))
 	-- Guild
 	local greetGuildActive, helloGuild, _ = kbo.Data:GetGreetingsGuild();
 	if greetGuildActive == true then
 		if kbo.Data:IsFirstLoginToday() then SendChatMessage(helloGuild, "GUILD"); end
 	else kbo:PrintDebug("Skipping Guild-Greetings."); end
+	-- Gruppe6
+	local greetG6Active, helloG6, backG6 = kbo.Data:GetGreetingsGruppe6();
+	if greetG6Active == true then
+		if kbo.Data:IsFirstLoginToday() then kbo.Gruppe6:SendMessage(helloG6); end
+	else kbo:PrintDebug("Skipping Gruppe6-Greetings."); end
 end
 
 -- Parse system-messages for online-notifications of guild-members
