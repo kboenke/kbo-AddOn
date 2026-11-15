@@ -627,6 +627,24 @@ end
 
 
 -----------------
+-- Tooltip Hover
+-----------------
+kbo.Tooltip = {};
+
+function kbo.Tooltip:Hover(tooltip)
+	local anchor = kboData.ANCHORS[GetSetting("cursorAnchorSide")] or kboData.ANCHORS.Default
+	local offsetX, offsetY = 0, 0
+	-- Adjust offset for center anchor
+	if GetSetting("cursorAnchorSide") == "Center" then
+		local width = tooltip:GetWidth() or 0
+		offsetX = offsetX - (width / 2)
+	end
+	-- Set anchor for the tooltip
+	tooltip:SetAnchorType(anchor, offsetX, offsetY)
+end
+
+
+-----------------
 -- Guild stuff
 -----------------
 kbo.Guild = {};

@@ -22,7 +22,18 @@ KboData.DEFAULTS = {
 	greetGruppe6 = false,
 	greetGruppe6Hello = "\\o/",
 	greetGruppe6Back = "re",
+	tooltipHover = true,
+	tooltipAnchor = "Default",
 }
+
+-- Tooltip anchors
+KboData.ANCHORS = {
+	Default = "ANCHOR_CURSOR",
+	Right = "ANCHOR_CURSOR_RIGHT",
+	Left = "ANCHOR_CURSOR_LEFT",
+	Center = "ANCHOR_CURSOR_RIGHT",
+}
+
 
 -- Constructor
 function KboData:New()
@@ -235,6 +246,15 @@ function KboData:GetGreetingsGruppe6()
 	self:ValidateSettings();
 	return self.settings['greetGruppe6'], self.settings['greetGruppe6Hello'], self.settings['greetGruppe6Back'];
 end
+function KboData:GetTooltipHover()
+	self:ValidateSettings();
+	return self.settings['tooltipHover'];
+end
+function KboData:GetTooltipAnchor()
+	self:ValidateSettings();
+	return self.settings['tooltipAnchor'];
+end
+
 function KboData:IsDebug() return self:GetDebug(); end
 function KboData:GetDebug()
 	return self.settings['DEBUG'];
@@ -274,6 +294,13 @@ function KboData:SetGreetingsGruppe6(active, hello, back)
 	self.settings['greetGruppe6Hello'] = hello;
 	self.settings['greetGruppe6Back'] = back;
 end
+function KboData:SetTooltipHover(active)
+	self.settings['tooltipHover'] = (active == true) and true or false;
+end
+function KboData:SetTooltipAnchor(anchor)
+	self.settings['tooltipAnchor'] = anchor;
+end
+
 function KboData:SetDebug(debug)
 	self.settings['DEBUG'] = (debug == true) and true or false;
 end

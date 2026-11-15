@@ -35,6 +35,9 @@ kboConfig.Text = {
 	todoQuestsTitle		= "Quests",
 	todoAchievementsTitle = "Achievements",
 	todoInstancesTitle	= "Instances",
+	tooltipTitle		= "Tooltip Settings",
+	tooltipToggle		= "Attach tooltip to cursor",
+	tooltipAnchor		= "Tooltip placement",
 }
 
 -- Initialization
@@ -83,7 +86,7 @@ function kboConfig:CreateOptionsPanel(parent)
 	kboConfig:CreatePanelHeader(parent);
 
 	-- Stats Configuration
-	parent.pStatTitle = kboConfig:CreateTitle(parent, nil, 10, -60);
+	parent.pStatTitle = kboConfig:CreateTitle(parent, "GameFontHighlight", 10, -60);
 	parent.pStatTitle:SetText(kboConfig.Text.statsTitle);
 	parent.sStatCritTitle = kboConfig:CreateTitle(parent, "GameFontHighlight");
 	parent.sStatCritTitle:SetPoint("BOTTOMLEFT", parent.pStatTitle, 3, -20);
@@ -112,7 +115,7 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.sStatHasteMax.Text:SetText(kboConfig.Text.statsRatingMax);
 
 	-- Equipment Stats
-	parent.pEquipTitle = kboConfig:CreateTitle(parent, nul, 10, -228);
+	parent.pEquipTitle = kboConfig:CreateTitle(parent, "GameFontHighlight", 10, -228);
 	parent.pEquipTitle:SetText(kboConfig.Text.equipTitle);
 	parent.cEquipInt = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
 	parent.cEquipInt:SetPoint("TOPLEFT", parent.pEquipTitle, 0, -18);
@@ -125,7 +128,7 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.cEquipHaste.Text:SetText(kboConfig.Text.equipHaste);
 
 	-- Greetings
-	parent.pGreetTitle = kboConfig:CreateTitle(parent, nil, 10, -278);
+	parent.pGreetTitle = kboConfig:CreateTitle(parent, "GameFontHighlight", 10, -278);
 	parent.pGreetTitle:SetText(kboConfig.Text.greetTitle);
 	-- Guild
 	parent.cGreetGuild = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
@@ -145,10 +148,12 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.pGreetGuildWelcome:SetText(kboConfig.Text.greetGuildWelcome);
 	parent.iGreetGuildWelcome = kboConfig:CreateEditbox(parent);
 	parent.iGreetGuildWelcome:SetPoint("TOPLEFT", parent.cGreetGuild, 480, -1);
+	parent.iGreetGuildWelcome:Disable();
 	-- Gruppe6
 	parent.cGreetG6 = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
 	parent.cGreetG6:SetPoint("TOPLEFT", parent.pGreetTitle, 0, -41);
 	parent.cGreetG6.Text:SetText(kboConfig.Text.greetG6Toggle);
+	parent.cGreetG6:Disable();
 	parent.pGreetG6Hello = kboConfig:CreateTitle(parent, "GameFontHighlight");
 	parent.pGreetG6Hello:SetSize(80, 16);
 	parent.pGreetG6Hello:SetPoint("TOPLEFT", parent.cGreetG6, 172, -5);
@@ -156,6 +161,7 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.pGreetG6Hello:SetText(kboConfig.Text.greetG6Hello);
 	parent.iGreetG6Hello = kboConfig:CreateEditbox(parent);
 	parent.iGreetG6Hello:SetPoint("TOPLEFT", parent.cGreetG6, 260, -1);
+	parent.iGreetG6Hello:Disable();
 	parent.pGreetG6Back = kboConfig:CreateTitle(parent, "GameFontHighlight");
 	parent.pGreetG6Back:SetSize(80, 16);
 	parent.pGreetG6Back:SetPoint("TOPLEFT", parent.cGreetG6, 393, -5);
@@ -163,9 +169,21 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.pGreetG6Back:SetText(kboConfig.Text.greetG6Back);
 	parent.iGreetG6Back = kboConfig:CreateEditbox(parent);
 	parent.iGreetG6Back:SetPoint("TOPLEFT", parent.cGreetG6, 480, -1);
+	parent.iGreetG6Back:Disable();
+
+	-- Tooltip Settings
+	parent.pTooltipTitle = kboConfig:CreateTitle(parent, "GameFontHighlight", 10, -378);
+	parent.pTooltipTitle:SetText(kboConfig.Text.tooltipTitle);
+	parent.cTooltip = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
+	parent.cTooltip:SetPoint("TOPLEFT", parent.pTooltipTitle, 0, -18);
+	parent.cTooltip.Text:SetText(kboConfig.Text.tooltipToggle);
+	-- Position
+	parent.sTooltipAnchor = kboConfig:CreateDropdown("TooltipAnchor", parent, KboData.ANCHORS);
+	parent.sTooltipAnchor:SetPoint("TOPLEFT", parent.cTooltip, 0, -30);
+
 
 	-- Debugging Settings
-	parent.pDebugTitle = kboConfig:CreateTitle(parent);
+	parent.pDebugTitle = kboConfig:CreateTitle(parent, "GameFontHighlight");
 	parent.pDebugTitle:SetPoint("BOTTOMLEFT", 10, 35);
 	parent.pDebugTitle:SetText(kboConfig.Text.debugTitle);
 	parent.cDebug = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
@@ -279,6 +297,9 @@ function kboConfig:UpdateOptions(parent)
 	parent.iGreetG6Hello:SetCursorPosition(0);
 	parent.iGreetG6Back:SetText(greetG6Back);
 	parent.iGreetG6Back:SetCursorPosition(0);
+	local tooltipHover, tooltipAnchor = kbo.Data:GetTooltipHover(), kbo.Data:GetTooltipAnchor();
+	parent.cTooltip:SetChecked(tooltipHover);
+	parent.sTooltipAnchor:SetSelectedValue(tooltipAnchor);
 	-- Debug
 	parent.cDebug:SetChecked(kbo.Data:GetDebug());
 	kboConfig:ToggleDebugOptions();
@@ -314,6 +335,7 @@ function kboConfig:SaveOptions(parent)
 		parent.iGreetG6Hello:GetText(),
 		parent.iGreetG6Back:GetText()
 	);
+	kbo.Data:SetTooltipHover(parent.cTooltip:GetChecked());
 	-- Debug
 	kbo.Data:SetDebug(parent.cDebug:GetChecked());
 end
@@ -340,6 +362,8 @@ function kboConfig:ResetOptions(parent)
 	parent.iGreetG6Hello:SetText(DEFAULTS.greetGruppe6Hello);
 	parent.iGreetG6Back:SetText(DEFAULTS.greetGruppe6Back);
 	parent.cDebug:SetChecked(DEFAULTS.Debug);
+	parent.cTooltip:SetChecked(DEFAULTS.tooltipHover);
+	parent.sTooltipAnchor:SetSelectedValue(DEFAULTS.tooltipAnchor);
 	kboConfig:SaveOptions(parent);
 end
 
@@ -375,12 +399,33 @@ end
 
 -- Title Factory
 function kboConfig:CreateTitle(parent, font, x, y)
-	title = parent:CreateFontString(nil, "BACKGROUND");
+	local title = parent:CreateFontString(nil, "BACKGROUND");
 	title:SetSize(300, 16);
 	if x ~= nil and y ~= nil then title:SetPoint("TOPLEFT", x, y); end
 	title:SetJustifyH("LEFT");
 	title:SetFontObject((font ~= nil) and font or "GameFontNormal");
 	return title;
+end
+
+-- Dropdown Factory
+function kboConfig:CreateDropdown(name, parent, items)
+	-- Create Standardized Dropdown
+	local dropdown = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate");
+	UIDropDownMenu_SetWidth(dropdown, 150);
+	-- Set initialization function to populate the menu
+	UIDropDownMenu_Initialize(dropdown, function(self, level, menuList)
+		for key, value in pairs(items) do
+			local info = UIDropDownMenu_CreateInfo();
+			info.text = key;
+			info.arg1 = key;
+			info.func = function(self, arg1) 
+				UIDropDownMenu_SetSelectedValue(dropdown, arg1);
+			end;
+			UIDropDownMenu_AddButton(info, level);
+		end
+	end);
+	
+	return dropdown;
 end
 
 -- Slider Factory
