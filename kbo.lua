@@ -629,20 +629,28 @@ end
 -----------------
 -- Tooltip Hover
 -----------------
-kbo.Tooltip = {};
-
-function kbo.Tooltip:Hover(tooltip, owner)
-	local setting = kbo.Data:GetTooltipAnchor();
-	local anchor = KboData.ANCHORS[setting] and setting or "Default";
-	local offsetX, offsetY = 10, 10;
-	-- Center width is unknown before the tooltip is filled
-	if setting == "Center" then offsetX = offsetX	-((tooltip:GetWidth() or 0) / 2); end
-	tooltip:SetOwner(owner or UIParent, KboData.ANCHORS[anchor], offsetX, offsetY);
-end
-
 hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
-	if kbo.Data:GetTooltipHover() then kbo.Tooltip:Hover(tooltip, parent); end
+	if kbo.Data:GetTooltipHover() then
+		tooltip.kboAnchor = KboData.ANCHORS[kbo.Data:GetTooltipAnchor()] or "ANCHOR_CURSOR";
+		tooltip:SetAnchorType(tooltip.kboAnchor, 0, 0);
+		tooltip.kboFollow = true;
+		tooltip.kboHeight = nil;
+	else
+		tooltip.kboFollow = nil;
+	end
 end);
+
+GameTooltip:HookScript("OnUpdate", function(self)
+	if not self.kboFollow then return; end
+	local owner = self:GetOwner();
+	if owner and owner ~= UIParent and not owner:IsMouseOver() then self:Hide(); return; end
+	local height = math.floor(self:GetHeight() + 0.5);
+	if height ~= self.kboHeight then
+		self.kboHeight = height;
+		self:SetAnchorType(self.kboAnchor, 0, -(height + 10));
+	end
+end);
+GameTooltip:HookScript("OnHide", function(self) self.kboFollow = nil; end);
 
 
 

@@ -31,7 +31,7 @@ KboData.ANCHORS = {
 	Default = "ANCHOR_CURSOR",
 	Right = "ANCHOR_CURSOR_RIGHT",
 	Left = "ANCHOR_CURSOR_LEFT",
-	Center = "ANCHOR_CURSOR_RIGHT",
+	Center = "ANCHOR_CURSOR",
 }
 
 
