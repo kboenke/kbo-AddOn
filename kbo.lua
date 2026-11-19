@@ -631,17 +631,19 @@ end
 -----------------
 kbo.Tooltip = {};
 
-function kbo.Tooltip:Hover(tooltip)
-	local anchor = kboData.ANCHORS[GetSetting("cursorAnchorSide")] or kboData.ANCHORS.Default
-	local offsetX, offsetY = 0, 0
-	-- Adjust offset for center anchor
-	if GetSetting("cursorAnchorSide") == "Center" then
-		local width = tooltip:GetWidth() or 0
-		offsetX = offsetX - (width / 2)
-	end
-	-- Set anchor for the tooltip
-	tooltip:SetAnchorType(anchor, offsetX, offsetY)
+function kbo.Tooltip:Hover(tooltip, owner)
+	local setting = kbo.Data:GetTooltipAnchor();
+	local anchor = KboData.ANCHORS[setting] and setting or "Default";
+	local offsetX, offsetY = 10, 10;
+	-- Center width is unknown before the tooltip is filled
+	if setting == "Center" then offsetX = offsetX	-((tooltip:GetWidth() or 0) / 2); end
+	tooltip:SetOwner(owner or UIParent, KboData.ANCHORS[anchor], offsetX, offsetY);
 end
+
+hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
+	if kbo.Data:GetTooltipHover() then kbo.Tooltip:Hover(tooltip, parent); end
+end);
+
 
 
 -----------------

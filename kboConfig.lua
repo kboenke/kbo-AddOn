@@ -177,10 +177,12 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.cTooltip = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
 	parent.cTooltip:SetPoint("TOPLEFT", parent.pTooltipTitle, 0, -18);
 	parent.cTooltip.Text:SetText(kboConfig.Text.tooltipToggle);
-	-- Position
-	parent.sTooltipAnchor = kboConfig:CreateDropdown("TooltipAnchor", parent, KboData.ANCHORS);
-	parent.sTooltipAnchor:SetPoint("TOPLEFT", parent.cTooltip, 0, -30);
-
+	parent.cTooltip:SetScript("OnClick", function() kboConfig:ToggleTooltipOptions(); end);
+	-- Anchor Position
+	kbo:PrintDebug("Creating Tooltip Anchor Dropdown");
+	parent.dTooltipAnchor = kboConfig:CreateDropdown("TooltipAnchor", parent, KboData.ANCHORS);
+	parent.dTooltipAnchor:SetPoint("TOPLEFT", parent.cTooltip, 172, 0);
+	kbo:PrintDebug("Tooltip Anchor Dropdown created");
 
 	-- Debugging Settings
 	parent.pDebugTitle = kboConfig:CreateTitle(parent, "GameFontHighlight");
@@ -297,9 +299,11 @@ function kboConfig:UpdateOptions(parent)
 	parent.iGreetG6Hello:SetCursorPosition(0);
 	parent.iGreetG6Back:SetText(greetG6Back);
 	parent.iGreetG6Back:SetCursorPosition(0);
-	local tooltipHover, tooltipAnchor = kbo.Data:GetTooltipHover(), kbo.Data:GetTooltipAnchor();
-	parent.cTooltip:SetChecked(tooltipHover);
-	parent.sTooltipAnchor:SetSelectedValue(tooltipAnchor);
+	-- Tooltip
+	parent.cTooltip:SetChecked(kbo.Data:GetTooltipHover());
+	UIDropDownMenu_SetSelectedValue(parent.dTooltipAnchor, kbo.Data:GetTooltipAnchor());
+	UIDropDownMenu_SetText(parent.dTooltipAnchor, kbo.Data:GetTooltipAnchor());
+	kboConfig:ToggleTooltipOptions();
 	-- Debug
 	parent.cDebug:SetChecked(kbo.Data:GetDebug());
 	kboConfig:ToggleDebugOptions();
@@ -336,6 +340,7 @@ function kboConfig:SaveOptions(parent)
 		parent.iGreetG6Back:GetText()
 	);
 	kbo.Data:SetTooltipHover(parent.cTooltip:GetChecked());
+	kbo.Data:SetTooltipAnchor(UIDropDownMenu_GetSelectedValue(parent.dTooltipAnchor));
 	-- Debug
 	kbo.Data:SetDebug(parent.cDebug:GetChecked());
 end
@@ -363,7 +368,8 @@ function kboConfig:ResetOptions(parent)
 	parent.iGreetG6Back:SetText(DEFAULTS.greetGruppe6Back);
 	parent.cDebug:SetChecked(DEFAULTS.Debug);
 	parent.cTooltip:SetChecked(DEFAULTS.tooltipHover);
-	parent.sTooltipAnchor:SetSelectedValue(DEFAULTS.tooltipAnchor);
+	UIDropDownMenu_SetSelectedValue(parent.dTooltipAnchor, DEFAULTS.tooltipAnchor);
+	UIDropDownMenu_SetText(parent.dTooltipAnchor, DEFAULTS.tooltipAnchor);
 	kboConfig:SaveOptions(parent);
 end
 
@@ -411,7 +417,7 @@ end
 function kboConfig:CreateDropdown(name, parent, items)
 	-- Create Standardized Dropdown
 	local dropdown = CreateFrame("Frame", name, parent, "UIDropDownMenuTemplate");
-	UIDropDownMenu_SetWidth(dropdown, 150);
+	dropdown:SetWidth(150);
 	-- Set initialization function to populate the menu
 	UIDropDownMenu_Initialize(dropdown, function(self, level, menuList)
 		for key, value in pairs(items) do
@@ -420,11 +426,11 @@ function kboConfig:CreateDropdown(name, parent, items)
 			info.arg1 = key;
 			info.func = function(self, arg1) 
 				UIDropDownMenu_SetSelectedValue(dropdown, arg1);
+				UIDropDownMenu_SetText(dropdown, arg1);
 			end;
 			UIDropDownMenu_AddButton(info, level);
 		end
 	end);
-	
 	return dropdown;
 end
 
@@ -487,7 +493,6 @@ end
 -- Show/Hide Debug Options
 function kboConfig:ToggleDebugOptions()
 	local parent = kboConfig.Panel;
-
 	if (parent.cDebug:GetChecked() == true) then
 		parent.bDebugExport:Show();
 		parent.bDebugReloadUI:Show();
@@ -495,9 +500,18 @@ function kboConfig:ToggleDebugOptions()
 		parent.bDebugExport:Hide();
 		parent.bDebugReloadUI:Hide();
 	end
-
 	-- Let's handle this setting in a special way and set it right away...
 	kbo.Data:SetDebug(parent.cDebug:GetChecked());
+end
+
+-- Enable/Disable Tooltip Options
+function kboConfig:ToggleTooltipOptions()
+	local parent = kboConfig.Panel;
+	if (parent.cTooltip:GetChecked() == true) then
+		UIDropDownMenu_EnableDropDown(parent.dTooltipAnchor);
+	else
+		UIDropDownMenu_DisableDropDown(parent.dTooltipAnchor);
+	end
 end
 
 -- Panel for Todo-Tabs
