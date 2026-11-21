@@ -3,7 +3,7 @@
 -----------------
 kbo = {
 	FRAME = CreateFrame("Frame"),
-	VERSION = "2.5.4",
+	VERSION = "2.5.5",
 	GUILD_ROSTER_ENABLED = kboConfig.GUILD_ROSTER_ENABLED,
 	REALMSUFFIX = "-".. GetRealmName(),
 	focuscolor = "|cffffff00",
