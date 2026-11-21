@@ -266,35 +266,32 @@ function kbo.Slash:EquipmentCheck()
 	local items, enchantedSlots = {}, {10, 11, 12, 16, 17};
 	local equipConfInt, equipConfCrit, equipConfHaste = kbo.Data:GetEquipCheck();
 	for i = 0, 18, 1 do
-		local _itemLink = GetInventoryItemLink("player", i);
-		if _itemLink ~= nil and i ~= 4 then --skipping shirt
-			-- Get item-details
-			local _itemName, _itemLink, _, _, _, _, itemSubType , _, _, _, _ = GetItemInfo(_itemLink);
-			local _itemLevel, _, _ = GetDetailedItemLevelInfo(_itemLink);
-			-- Extract enchants and socketed gems (https://wow.gamepedia.com/ItemLink)
+		local _invLink = GetInventoryItemLink("player", i);
+		if _invLink ~= nil and i ~= 4 then --skipping shirt
+			-- GetItemInfo returns nil until the item is cached, so fall back to the inventory link
+			local _itemName, _itemLink, _, _baseLevel, _, _, itemSubType = GetItemInfo(_invLink);
+			_itemLink = _itemLink or _invLink;
+			local _itemLevel = (GetDetailedItemLevelInfo and GetDetailedItemLevelInfo(_invLink)) or _baseLevel or 0;
+			-- Extract enchant ID (https://wowpedia.fandom.com/wiki/ItemLink)
 			local _remark = "";
-			local _, _, _, _, _, _enchantID, gem1ID, gem2ID, gem3ID, gem4ID, _, _, _, _, _
-			  = string.find(_itemLink, "|?c?f?f?(%x*)|?H?([^:]*):?(%d+):?(%d*):?(%d*):?(%d*):?(%d*):?(%d*):?(%-?%d*):?(%-?%d*):?(%d*):?(%d*)|?h?%[?([^%[%]]*)%]?|?h?|?r?");
-			local _stats = GetItemStats(_itemLink);
-			-- Check for missing stuff
-			if	(equipConfInt and not kbo:ContainsKey(_stats, "^ITEM_MOD_INTELLECT", false)) or
+			local _, _, _, _, _, _enchantID = string.find(_itemLink, "|?c?f?f?(%x*)|?H?([^:]*):?(%d+):?(%d*)");
+			-- Check for missing stats (skipped when the client has no GetItemStats)
+			local _stats = GetItemStats and GetItemStats(_invLink);
+			if	_stats and (
+				(equipConfInt and not kbo:ContainsKey(_stats, "^ITEM_MOD_INTELLECT", false)) or
 				(equipConfCrit and not (kbo:ContainsKey(_stats, "^ITEM_MOD_CRIT", false))) or
-				(equipConfHaste and not (kbo:ContainsKey(_stats, "^ITEM_MOD_HASTE", false)))
+				(equipConfHaste and not (kbo:ContainsKey(_stats, "^ITEM_MOD_HASTE", false))))
 				then
 				_remark = "Wrong stats";
 			end
 			if kbo:ContainsValue(enchantedSlots, i, true) then
 				if itemSubType ~= "Shields" then
-					if _enchantID == "" then _remark = "Enchantment missing"; end
+					if _enchantID == nil or _enchantID == "" or _enchantID == "0" then _remark = "Enchantment missing"; end
 				end
-			end
-			local _stats = GetItemStats(GetInventoryItemLink("player", i));
-			if kbo:ContainsKey(_stats, "^EMPTY_SOCKET", false) then
-				if gem1ID == "" then _remark = "Gem missing"; end
 			end
 			-- Store item
 			table.insert(items, {
-				name = _itemName,
+				name = _itemName or "?",
 				link = _itemLink,
 				iLvl = _itemLevel,
 				slot = i,

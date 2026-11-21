@@ -172,7 +172,7 @@ function kboConfig:CreateOptionsPanel(parent)
 	parent.iGreetG6Back:Disable();
 
 	-- Tooltip Settings
-	parent.pTooltipTitle = kboConfig:CreateTitle(parent, "GameFontHighlight", 10, -378);
+	parent.pTooltipTitle = kboConfig:CreateTitle(parent, "GameFontHighlight", 10, -358);
 	parent.pTooltipTitle:SetText(kboConfig.Text.tooltipTitle);
 	parent.cTooltip = CreateFrame("CheckButton", nil, parent, "InterfaceOptionsCheckButtonTemplate");
 	parent.cTooltip:SetPoint("TOPLEFT", parent.pTooltipTitle, 0, -18);
